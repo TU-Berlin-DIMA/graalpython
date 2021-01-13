@@ -101,12 +101,12 @@ public abstract class FunctionInvokeNode extends DirectInvokeNode {
         optionallySetClassBodySpecial(arguments, ct, isClassBodyProfile);
         optionallySetGeneratorFunction(arguments, ct, isGeneratorFunctionProfile, callee);
         if (profileIsNullFrame(frame == null)) {
-            PFrame.Reference frameInfo = IndirectCalleeContext.enter(context, arguments, ct);
-            try {
+            //PFrame.Reference frameInfo = IndirectCalleeContext.enter(context, arguments, ct);
+            //try {
                 return callNode.call(arguments);
-            } finally {
-                IndirectCalleeContext.exit(context, frameInfo);
-            }
+            //} finally {
+             //   IndirectCalleeContext.exit(context, frameInfo);
+            //}
         } else {
             callContext.prepareCall(frame, arguments, ct, this);
             return callNode.call(arguments);
