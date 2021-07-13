@@ -151,9 +151,10 @@ public abstract class ExecutionContext {
                 if (isPythonFrame(frame, callNode)) {
                     curExc = PArguments.getException(frame);
                     if (curExc == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        PException fromStackWalk = GetCaughtExceptionNode.fullStackWalk();
-                        curExc = fromStackWalk != null ? fromStackWalk : PException.NO_EXCEPTION;
+                        //CompilerDirectives.transferToInterpreterAndInvalidate();
+                        //PException fromStackWalk = GetCaughtExceptionNode.fullStackWalk();
+                       // curExc = fromStackWalk != null ? fromStackWalk : PException.NO_EXCEPTION;
+                        curExc = PException.NO_EXCEPTION;
                         // now, set in our args, such that we won't do this again
                         PArguments.setException(frame, curExc);
                     }
