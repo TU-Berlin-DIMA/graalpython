@@ -125,6 +125,14 @@ abstract class AccessForeignItemNodes {
 
         public abstract Object execute(VirtualFrame frame, Object object, Object idx);
 
+        @Specialization(guards = {"lib.isBfNode(left) || lib.isBfNode(right)"})
+        Object doBf(
+                Object left,
+                Object right,
+                @CachedLibrary(limit = "30") InteropLibrary lib) {
+            return lib.executeBinaryOperation(left, right, "___getitem___");
+        }
+
         @Specialization
         public Object doForeignObjectSlice(Object object, PSlice idxSlice,
                         @CachedLibrary(limit = "3") InteropLibrary lib,

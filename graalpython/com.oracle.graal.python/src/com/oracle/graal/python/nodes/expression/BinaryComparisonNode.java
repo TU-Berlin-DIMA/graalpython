@@ -25,10 +25,6 @@
  */
 package com.oracle.graal.python.nodes.expression;
 
-import static com.oracle.graal.python.nodes.SpecialMethodNames.__EQ__;
-import static com.oracle.graal.python.nodes.SpecialMethodNames.__NE__;
-import static com.oracle.graal.python.runtime.exception.PythonErrorType.TypeError;
-
 import com.oracle.graal.python.builtins.objects.PNotImplemented;
 import com.oracle.graal.python.nodes.ErrorMessages;
 import com.oracle.graal.python.nodes.PRaiseNode;
@@ -36,10 +32,19 @@ import com.oracle.graal.python.nodes.call.special.LookupAndCallBinaryNode;
 import com.oracle.graal.python.nodes.expression.IsExpressionNode.IsNode;
 import com.oracle.graal.python.nodes.expression.IsExpressionNodeGen.IsNodeGen;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+
+import static com.oracle.graal.python.nodes.SpecialMethodNames.__EQ__;
+import static com.oracle.graal.python.nodes.SpecialMethodNames.__NE__;
+import static com.oracle.graal.python.runtime.exception.PythonErrorType.TypeError;
 
 public abstract class BinaryComparisonNode extends BinaryOpNode {
 
@@ -48,9 +53,12 @@ public abstract class BinaryComparisonNode extends BinaryOpNode {
     private final String operation;
     protected final ConditionProfile profile = ConditionProfile.createBinaryProfile();
 
-    @Child private LookupAndCallBinaryNode callNode;
-    @Child private PRaiseNode raiseNode;
-    @Child private IsNode isNode;
+    @Child
+    private LookupAndCallBinaryNode callNode;
+    @Child
+    private PRaiseNode raiseNode;
+    @Child
+    private IsNode isNode;
 
     BinaryComparisonNode(String magicMethod, String magicReverseMethod, String operation) {
         this.magicMethod = magicMethod;
@@ -260,6 +268,16 @@ public abstract class BinaryComparisonNode extends BinaryOpNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException("Comparison on primitive values didn't return a boolean");
         }
+    }
+
+
+
+    @Specialization(guards = {"lib.isBfNode(left) || lib.isBfNode(right)"})
+    Object doInteropt(
+            Object left,
+            Object right,
+            @CachedLibrary(limit = "30") InteropLibrary lib) {
+        return lib.executeBinaryOperation(left, right, operation);
     }
 
     @Specialization
