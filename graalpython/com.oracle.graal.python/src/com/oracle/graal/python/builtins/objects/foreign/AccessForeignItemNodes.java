@@ -40,11 +40,6 @@
  */
 package com.oracle.graal.python.builtins.objects.foreign;
 
-import static com.oracle.graal.python.runtime.exception.PythonErrorType.AttributeError;
-import static com.oracle.graal.python.runtime.exception.PythonErrorType.IndexError;
-import static com.oracle.graal.python.runtime.exception.PythonErrorType.KeyError;
-import static com.oracle.graal.python.runtime.exception.PythonErrorType.TypeError;
-
 import com.oracle.graal.python.builtins.PythonBuiltinClassType;
 import com.oracle.graal.python.builtins.objects.PNone;
 import com.oracle.graal.python.builtins.objects.foreign.AccessForeignItemNodesFactory.GetForeignItemNodeGen;
@@ -83,12 +78,18 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
+import static com.oracle.graal.python.runtime.exception.PythonErrorType.AttributeError;
+import static com.oracle.graal.python.runtime.exception.PythonErrorType.IndexError;
+import static com.oracle.graal.python.runtime.exception.PythonErrorType.KeyError;
+import static com.oracle.graal.python.runtime.exception.PythonErrorType.TypeError;
+
 abstract class AccessForeignItemNodes {
 
     @ImportStatic(PythonOptions.class)
     @TypeSystemReference(PythonArithmeticTypes.class)
     protected abstract static class AccessForeignItemBaseNode extends PNodeWithContext {
-        @Child PRaiseNode raiseNode;
+        @Child
+        PRaiseNode raiseNode;
 
         protected PException raise(PythonBuiltinClassType type, String msg, Object... arguments) {
             if (raiseNode == null) {
@@ -121,7 +122,8 @@ abstract class AccessForeignItemNodes {
     }
 
     protected abstract static class GetForeignItemNode extends AccessForeignItemBaseNode {
-        @Child private PForeignToPTypeNode toPythonNode;
+        @Child
+        private PForeignToPTypeNode toPythonNode;
 
         public abstract Object execute(VirtualFrame frame, Object object, Object idx);
 
@@ -135,11 +137,11 @@ abstract class AccessForeignItemNodes {
 
         @Specialization
         public Object doForeignObjectSlice(Object object, PSlice idxSlice,
-                        @CachedLibrary(limit = "3") InteropLibrary lib,
-                        @Cached("create()") PythonObjectFactory factory,
-                        @Cached CoerceToIntSlice sliceCast,
-                        @Cached ComputeIndices compute,
-                        @Cached LenOfRangeNode sliceLen) {
+                                           @CachedLibrary(limit = "3") InteropLibrary lib,
+                                           @Cached("create()") PythonObjectFactory factory,
+                                           @Cached CoerceToIntSlice sliceCast,
+                                           @Cached ComputeIndices compute,
+                                           @Cached LenOfRangeNode sliceLen) {
             SliceInfo mslice;
             try {
                 mslice = materializeSlice(sliceCast.execute(idxSlice), object, compute, lib);
@@ -155,7 +157,7 @@ abstract class AccessForeignItemNodes {
 
         @Specialization
         public Object doForeignKey(Object object, String key,
-                        @CachedLibrary(limit = "3") InteropLibrary lib) {
+                                   @CachedLibrary(limit = "3") InteropLibrary lib) {
             if (lib.hasMembers(object)) {
                 if (lib.isMemberReadable(object, key)) {
                     try {
@@ -173,8 +175,8 @@ abstract class AccessForeignItemNodes {
 
         @Specialization(guards = {"!isSlice(idx)", "!isString(idx)"}, limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignObject(VirtualFrame frame, Object object, Object idx,
-                        @CachedLibrary("idx") PythonObjectLibrary pythonLib,
-                        @CachedLibrary("object") InteropLibrary lib) {
+                                      @CachedLibrary("idx") PythonObjectLibrary pythonLib,
+                                      @CachedLibrary("object") InteropLibrary lib) {
             return readForeignValue(object, pythonLib.asSizeWithState(idx, PArguments.getThreadState(frame)), lib);
         }
 
@@ -229,17 +231,24 @@ abstract class AccessForeignItemNodes {
 
         public abstract Object execute(VirtualFrame frame, Object object, Object idx, Object value);
 
+        @Specialization(guards = {"lib.isBfNode(object)"})
+        Object doBf(
+                Object object, Object idx, Object value,
+                @CachedLibrary(limit = "30") InteropLibrary lib) {
+            return lib.executeBinaryOperation(object, new Object[]{idx, value}, "___setitem___");
+        }
+
         @Specialization(limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignObjectSlice(VirtualFrame frame, Object object, PSlice idxSlice, Object pvalues,
-                        @CachedLibrary("object") InteropLibrary lib,
-                        @CachedLibrary("pvalues") PythonObjectLibrary pvaluesLib,
-                        @Cached GetNextNode getNext,
-                        @Cached PTypeToForeignNode valueToForeignNode,
-                        @Cached BranchProfile unsupportedMessage,
-                        @Cached BranchProfile unsupportedType,
-                        @Cached BranchProfile wrongIndex,
-                        @Cached CoerceToIntSlice sliceCast,
-                        @Cached ComputeIndices compute) {
+                                           @CachedLibrary("object") InteropLibrary lib,
+                                           @CachedLibrary("pvalues") PythonObjectLibrary pvaluesLib,
+                                           @Cached GetNextNode getNext,
+                                           @Cached PTypeToForeignNode valueToForeignNode,
+                                           @Cached BranchProfile unsupportedMessage,
+                                           @Cached BranchProfile unsupportedType,
+                                           @Cached BranchProfile wrongIndex,
+                                           @Cached CoerceToIntSlice sliceCast,
+                                           @Cached ComputeIndices compute) {
             Object value;
             SliceInfo mslice;
             try {
@@ -258,7 +267,7 @@ abstract class AccessForeignItemNodes {
 
         @Specialization(limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignKey(Object object, String key, Object value,
-                        @CachedLibrary("object") InteropLibrary lib) {
+                                   @CachedLibrary("object") InteropLibrary lib) {
             if (lib.hasMembers(object)) {
                 if (lib.isMemberWritable(object, key)) {
                     try {
@@ -295,12 +304,12 @@ abstract class AccessForeignItemNodes {
 
         @Specialization(guards = {"!isSlice(idx)", "!isString(idx)"}, limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignObject(VirtualFrame frame, Object object, Object idx, Object value,
-                        @CachedLibrary("object") InteropLibrary lib,
-                        @CachedLibrary("idx") PythonObjectLibrary pythonLib,
-                        @Cached PTypeToForeignNode valueToForeignNode,
-                        @Cached BranchProfile unsupportedMessage,
-                        @Cached BranchProfile unsupportedType,
-                        @Cached BranchProfile wrongIndex) {
+                                      @CachedLibrary("object") InteropLibrary lib,
+                                      @CachedLibrary("idx") PythonObjectLibrary pythonLib,
+                                      @Cached PTypeToForeignNode valueToForeignNode,
+                                      @Cached BranchProfile unsupportedMessage,
+                                      @Cached BranchProfile unsupportedType,
+                                      @Cached BranchProfile wrongIndex) {
             int convertedIdx = pythonLib.asSizeWithState(idx, PArguments.getThreadState(frame));
             Object convertedValue = valueToForeignNode.executeConvert(value);
             writeForeignValue(object, convertedIdx, convertedValue, lib, unsupportedMessage, unsupportedType, wrongIndex);
@@ -346,9 +355,9 @@ abstract class AccessForeignItemNodes {
 
         @Specialization(limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignObjectSlice(Object object, PSlice idxSlice,
-                        @CachedLibrary("object") InteropLibrary lib,
-                        @Cached CoerceToIntSlice sliceCast,
-                        @Cached ComputeIndices compute) {
+                                           @CachedLibrary("object") InteropLibrary lib,
+                                           @Cached CoerceToIntSlice sliceCast,
+                                           @Cached ComputeIndices compute) {
 
             try {
                 SliceInfo mslice = materializeSlice(sliceCast.execute(idxSlice), object, compute, lib);
@@ -363,7 +372,7 @@ abstract class AccessForeignItemNodes {
 
         @Specialization
         public Object doForeignKey(Object object, String key,
-                        @CachedLibrary(limit = "3") InteropLibrary lib) {
+                                   @CachedLibrary(limit = "3") InteropLibrary lib) {
             if (lib.hasMembers(object)) {
                 if (lib.isMemberRemovable(object, key)) {
                     try {
@@ -394,8 +403,8 @@ abstract class AccessForeignItemNodes {
 
         @Specialization(guards = "!isSlice(idx)", limit = "getCallSiteInlineCacheMaxDepth()")
         public Object doForeignObject(VirtualFrame frame, Object object, Object idx,
-                        @CachedLibrary("idx") PythonObjectLibrary pythonLib,
-                        @CachedLibrary("object") InteropLibrary lib) {
+                                      @CachedLibrary("idx") PythonObjectLibrary pythonLib,
+                                      @CachedLibrary("object") InteropLibrary lib) {
             if (lib.hasArrayElements(object)) {
                 try {
                     int convertedIdx = pythonLib.asSizeWithState(idx, PArguments.getThreadState(frame));

@@ -68,6 +68,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -384,7 +385,15 @@ public abstract class LookupAndCallBinaryNode extends Node {
             throw handleLeftURE(frame, left, right, e);
         }
     }
-
+/**
+    @Specialization(guards = {"lib.isBfNode(left) || lib.isBfNode(right)"})
+    Object doInteropt(
+            Object left,
+            Object right,
+            @CachedLibrary(limit = "30") InteropLibrary lib) {
+        return lib.executeBinaryOperation(left, right, getName());
+    }
+*/
     // Object, Object
 
     @Specialization(guards = {"!isReversible()"}, limit = "5")

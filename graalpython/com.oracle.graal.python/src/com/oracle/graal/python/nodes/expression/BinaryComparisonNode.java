@@ -296,4 +296,8 @@ public abstract class BinaryComparisonNode extends BinaryOpNode {
         }
         return isNode;
     }
+
+    public String getOperation() {
+        return operation;
+    }
 }

@@ -498,6 +498,14 @@ public class ForeignObjectBuiltins extends PythonBuiltins {
             return comparisonNode.executeWith(frame, PNone.NONE, right);
         }
 
+        @Specialization(guards = {"lib.isBfNode(left) || lib.isBfNode(right)"})
+        Object doBf(
+                Object left,
+                Object right,
+                @CachedLibrary(limit = "30") InteropLibrary lib) {
+            return lib.executeBinaryOperation(left, right, comparisonNode.getOperation());
+        }
+
         @SuppressWarnings("unused")
         @Fallback
         public PNotImplemented doGeneric(Object left, Object right) {
